@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battleship — Hải chiến</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#101f32;--panel2:#14283f;--line:#27445f;--text:#edf5ff;--muted:#9cb2ca;--blue:#42b9f5;--cyan:#68e0e8;--hit:#ff7a78;--ship:#6786a5;--water:#0b1a2b;--good:#74e0b0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#102b46 0,#07111f 58%);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);border-radius:10px;background:#18334f;color:var(--text);padding:10px 14px;transition:.15s}
+button:hover:not(:disabled){border-color:var(--blue);transform:translateY(-1px)}button:disabled{opacity:.42;cursor:not-allowed}
+.primary{background:linear-gradient(135deg,#168bd1,#1761b8);border-color:#379ee0}.quiet{background:transparent}.danger{background:#512a37;border-color:#8d4758}
+.wrap{max-width:1180px;margin:auto;padding:28px 20px 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:13px}.logo{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#1a9de0,#174b8c);font-size:23px;box-shadow:0 8px 25px #168bd133}
+h1{font-size:clamp(23px,4vw,34px);margin:0;letter-spacing:.3px}.sub{margin-top:5px;color:var(--muted);font-size:13px}
+.status{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line);background:#0c1b2c;border-radius:99px;color:var(--muted);font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:var(--good)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.mode{display:flex;gap:6px;padding:5px;border:1px solid var(--line);border-radius:13px;background:#0b1929}.mode button{border:0;background:transparent}.mode button.active{background:#1a4669;color:#fff}
+.notice{padding:12px 15px;border:1px solid #285575;background:#0c2236;border-radius:12px;color:#c6e6ff;margin-bottom:18px;line-height:1.45;min-height:46px}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:linear-gradient(160deg,#12243a,#0d1a2b);border:1px solid var(--line);border-radius:17px;padding:17px;min-width:0;box-shadow:0 12px 35px #0002}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}.panel-head h2{margin:0;font-size:17px}.pill{font-size:12px;color:#b9d5ee;background:#18334e;padding:6px 9px;border-radius:99px;white-space:nowrap}
+.board{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;max-width:510px;margin:auto}.cell{aspect-ratio:1;padding:0;min-width:0;border-radius:5px;border:1px solid #24435e;background:linear-gradient(145deg,#102b43,#0b1c2e);position:relative;display:grid;place-items:center;font-size:clamp(10px,2vw,17px);font-weight:700;color:#fff}
+.cell.water:hover:not(:disabled){background:#17415f}.cell.ship{background:linear-gradient(145deg,#416d8c,#183d59);border-color:#8ab6d3;box-shadow:inset 0 1px 0 #d7efff66,inset 0 -3px 0 #061a2a88}.cell.ship::before{content:"";position:absolute;inset:25% 8%;border-radius:45% 45% 35% 35%;background:linear-gradient(180deg,#d5e8f4,#6d9bb8 45%,#28506b);border:1px solid #c2e1f5;box-shadow:0 2px 3px #06111d99}.cell.ship.ship-horizontal::before{inset:28% 2%;border-radius:48% 30% 30% 48%}.cell.ship.ship-vertical::before{inset:2% 28%;border-radius:48% 48% 30% 30%}.cell.ship::after{content:"";position:absolute;width:24%;height:24%;border-radius:2px;background:#e3f3fb;box-shadow:0 0 0 1px #294f69;top:38%;left:38%}.cell.ship.ship-horizontal::after{left:42%;top:30%}.cell.ship.ship-vertical::after{left:30%;top:42%}.cell.miss{background:#162b3c;color:#80a0bc}.cell.miss:after{content:"·";font-size:24px;color:#8aa9c3}.cell.hit{background:#743c48;border-color:#ff8984;color:#fff}.cell.hit:after{content:"×";font-size:clamp(14px,2.5vw,23px);color:#ffaaa6}.cell.sunk{background:#913e45;border-color:#ffaaa6}
+.axis{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;max-width:510px;margin:0 auto 5px;text-align:center;color:#7692ad;font-size:10px}.axis span{padding:2px 0}.board-wrap{min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:13px;margin-top:14px;color:var(--muted);font-size:12px}.legend span{display:flex;align-items:center;gap:6px}.swatch{width:11px;height:11px;border-radius:3px;background:#496783;border:1px solid #7697b8}.swatch.miss{background:#162b3c}.swatch.hit{background:#743c48;border-color:#ff8984}
+.panel-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:15px;flex-wrap:wrap;color:var(--muted);font-size:12px}.fleet{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}.ship-tag{font-size:12px;border:1px solid var(--line);padding:6px 8px;border-radius:7px;color:#bfd2e5}.ship-tag.done{color:#6c8aa6;text-decoration:line-through;opacity:.65}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:17px}.bottom{color:#6f89a4;text-align:center;font-size:12px;margin-top:22px}
+.modal{position:fixed;inset:0;background:#020813d9;display:none;place-items:center;padding:20px;z-index:5}.modal.show{display:grid}.modal-box{max-width:430px;width:100%;padding:24px;border:1px solid #355775;border-radius:17px;background:#10233a;text-align:center;box-shadow:0 25px 80px #0008}.modal-box h2{margin-top:0}.modal-box p{color:var(--muted);line-height:1.5}.modal-box .actions{justify-content:center}
+@media(max-width:760px){.wrap{padding:18px 12px 28px}.layout{grid-template-columns:1fr}.panel{padding:13px}.board{gap:3px}.axis{gap:3px}.cell{border-radius:4px}.status{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="logo">⚓</div><div><h1>BATTLESHIP</h1><div class="sub">HẢI CHIẾN · CHIẾN THUẬT TRÊN BIỂN</div></div></div>
+    <div class="status"><span class="dot"></span><span id="connection">Chế độ ngoại tuyến · chơi ngay</span></div>
+  </header>
+
+  <div class="toolbar">
+    <div class="mode" aria-label="Chế độ chơi">
+      <button id="soloMode" class="active">Đấu với máy</button>
+      <button id="onlineMode">Chơi qua LAN</button>
+    </div>
+    <button id="newGame" class="primary">Ván mới</button>
+    <button id="placeBtn">Xếp tàu thủ công</button>
+  </div>
+
+  <div id="notice" class="notice" role="status">Đang chuẩn bị chiến trường…</div>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-head"><h2 id="leftTitle">Hạm đội của bạn</h2><span id="leftCount" class="pill">5 tàu · 17 ô</span></div>
+      <div class="board-wrap">
+        <div class="axis"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span><span>I</span><span>J</span></div>
+        <div id="ownBoard" class="board" aria-label="Bàn cờ của bạn"></div>
+      </div>
+      <div class="legend"><span><i class="swatch"></i>Tàu của bạn</span><span><i class="swatch miss"></i>Bắn trượt</span><span><i class="swatch hit"></i>Bắn trúng</span></div>
+      <div id="fleet" class="fleet"></div>
+      <div id="placementControls" class="actions"><button id="rotateBtn">Đổi hướng: ngang</button><button id="confirmPlacement" class="primary" disabled>Bắt đầu trận</button><button id="randomPlacement">Tự xếp ngẫu nhiên</button></div>
+      <div class="panel-foot"><span id="leftHint">Tàu được bố trí tự động.</span><span id="ownHits">Thiệt hại: 0/17</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2 id="rightTitle">Hạm đội đối phương</h2><span id="rightCount" class="pill">17 ô còn lại</span></div>
+      <div class="board-wrap">
+        <div class="axis"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span><span>I</span><span>J</span></div>
+        <div id="enemyBoard" class="board" aria-label="Bàn cờ đối phương"></div>
+      </div>
+      <div class="legend"><span><i class="swatch"></i>Chưa khám phá</span><span><i class="swatch miss"></i>Bắn trượt</span><span><i class="swatch hit"></i>Bắn trúng</span></div>
+      <div class="panel-foot"><span id="rightHint">Chọn một ô để khai hỏa.</span><span id="enemyHits">Đã đánh trúng: 0/17</span></div>
+      <div class="actions"><button id="resetShips">Đặt lại đội tàu</button></div>
+    </section>
+  </main>
+  <div class="bottom">Hạm đội gồm 5 tàu · Bản đồ 10 × 10 · Tàu không được chồng lấn hoặc chạm nhau theo quy tắc đặt tàu của phiên bản này.</div>
+</div>
+<div id="passModal" class="modal"><div class="modal-box"><h2 id="modalTitle">Chuyển lượt</h2><p id="modalText">Chuyển thiết bị cho người chơi tiếp theo.</p><div class="actions"><button id="modalContinue" class="primary">Tiếp tục</button></div></div></div>
+<div id="endModal" class="modal"><div class="modal-box"><h2 id="endTitle">Kết thúc ván</h2><p id="endText"></p><div class="actions"><button id="playAgain" class="primary">Chơi lại</button></div></div></div>
+<script>
+(function(){
+"use strict";
+const N=10, SHIPS=[{name:"Tàu sân bay",size:5},{name:"Thiết giáp hạm",size:4},{name:"Tuần dương hạm",size:3},{name:"Tàu ngầm",size:3},{name:"Tàu tuần tra",size:2}];
+let mode="solo",turn="player",gameOver=false,passPending=false;
+let player,enemy,shots,aiTargets,aiLastHit,aiDirection;
+let placingShips=true, shipIndex=0, verticalPlacement=false;
+const $=id=>document.getElementById(id);
+function newBoard(){return {ships:[],shots:Array.from({length:N},()=>Array(N).fill(""))};}
+function rand(n){return Math.floor(Math.random()*n);}
+function neighbors(r,c){let a=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){let y=r+dr,x=c+dc;if(y>=0&&y<N&&x>=0&&x<N)a.push([y,x]);}return a;}
+function canPlace(board,r,c,size,vert){
+  for(let i=0;i<size;i++){let y=r+(vert?i:0),x=c+(vert?0:i);if(y<0||y>=N||x<0||x>=N)return false;
+    for(const [ny,nx] of neighbors(y,x)){if(board.ships.some(s=>s.cells.some(p=>p[0]===ny&&p[1]===nx)))return false;}
+  }return true;
+}
+function placeAll(board){
+  board.ships=[];
+  for(const def of SHIPS){let placed=false,tries=0;while(!placed&&tries<5000){tries++;let v=Math.random()<.5,r=rand(N),c=rand(N);if(canPlace(board,r,c,def.size,v)){let cells=[];for(let i=0;i<def.size;i++)cells.push([r+(v?i:0),c+(v?0:i)]);board.ships.push({name:def.name,size:def.size,cells,hits:0,sunk:false});placed=true;}}
+    if(!placed){board.ships=[];return placeAll(board);}
+  }
+}
+function shipAt(board,r,c){return board.ships.find(s=>s.cells.some(p=>p[0]===r&&p[1]===c));}
+function totalHits(board){return board.ships.reduce((n,s)=>n+s.hits,0);}
+function remaining(board){return board.ships.reduce((n,s)=>n+(s.size-s.hits),0);}
+function allSunk(board){return board.ships.every(s=>s.sunk);}
+function fresh(){player=newBoard();enemy=newBoard();placeAll(enemy);turn="player";gameOver=false;passPending=false;aiTargets=[];aiLastHit=null;aiDirection=null;placingShips=true;shipIndex=0;verticalPlacement=false;render();setNotice(mode==="solo"?"Hãy tự xếp 5 tàu của bạn. Chọn ô bắt đầu của từng tàu.":"Người chơi 1: hãy xếp tàu trên máy chủ.");}
+function setNotice(t){$("notice").textContent=t;}
+function cellLabel(r,c){return String.fromCharCode(65+c)+(r+1);}
+function makeCell(boardName,r,c){
+  const b=boardName==="own"?player:enemy,button=document.createElement("button");button.className="cell";button.type="button";button.setAttribute("aria-label",cellLabel(r,c));
+  const shot=b.shots[r][c],ship=shipAt(b,r,c);
+  if(shot==="hit"){button.classList.add("hit");if(ship&&ship.sunk)button.classList.add("sunk");button.textContent="×";}
+  else if(shot==="miss"){button.classList.add("miss");button.textContent="";}
+  else if(boardName==="own"&&ship){
+    button.classList.add("ship");
+    const horizontalBefore=ship.cells.some(p=>p[0]===r&&p[1]===c-1);
+    const horizontalAfter=ship.cells.some(p=>p[0]===r&&p[1]===c+1);
+    const verticalBefore=ship.cells.some(p=>p[0]===r-1&&p[1]===c);
+    const verticalAfter=ship.cells.some(p=>p[0]===r+1&&p[1]===c);
+    button.classList.add(horizontalBefore||horizontalAfter?"ship-horizontal":"ship-vertical");
+  }
+  if(boardName==="enemy"){
+    button.disabled=gameOver||placingShips||turn!=="player"||shot!==""||passPending;
+    button.addEventListener("click",()=>fireAtEnemy(r,c));
+  }else{
+    button.disabled=!(mode==="solo"&&placingShips);
+    if(mode==="solo"&&placingShips) button.addEventListener("click",()=>placeManualShip(r,c));
+  }
+  return button;
+}
+function render(){
+  $("ownBoard").replaceChildren();$("enemyBoard").replaceChildren();
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){$("ownBoard").appendChild(makeCell("own",r,c));$("enemyBoard").appendChild(makeCell("enemy",r,c));}
+  $("leftTitle").textContent="Hạm đội của bạn";
+  $("rightTitle").textContent="Hạm đội đối phương";
+  $("leftCount").textContent=player.ships.length+" tàu · "+remaining(player)+" ô còn";
+  $("rightCount").textContent=remaining(enemy)+" ô còn lại";
+  $("ownHits").textContent="Thiệt hại: "+totalHits(player)+"/17";
+  $("enemyHits").textContent="Đã đánh trúng: "+totalHits(enemy)+"/17";
+  $("fleet").replaceChildren();
+  player.ships.forEach(s=>{let e=document.createElement("span");e.className="ship-tag"+(s.sunk?" done":"");e.textContent=s.name+" ("+s.size+")";$("fleet").appendChild(e);});
+  $("leftHint").textContent=placingShips?"Đặt tàu "+Math.min(shipIndex+1,5)+"/5: "+(SHIPS[shipIndex]?SHIPS[shipIndex].name+" ("+SHIPS[shipIndex].size+" ô)":"hoàn tất")+". Chọn ô trên bàn cờ.":"Tàu của bạn được hiển thị trên bàn cờ.";
+  $("rightHint").textContent=gameOver?"Ván đấu đã kết thúc.":mode==="online"?"Chọn ô chưa bắn để khai hỏa.":"Chọn ô chưa bắn để khai hỏa.";
+  $("soloMode").classList.toggle("active",mode==="solo");
+  $("placementControls").style.display=mode==="solo"&&placingShips?"flex":"none";
+  $("confirmPlacement").disabled=player.ships.length!==SHIPS.length;
+}
+function fire(board,r,c){
+  if(board.shots[r][c]!=="")return {valid:false};
+  const ship=shipAt(board,r,c);
+  if(ship){board.shots[r][c]="hit";ship.hits++;if(ship.hits>=ship.size)ship.sunk=true;return {valid:true,hit:true,sunk:ship.sunk,name:ship.name};}
+  board.shots[r][c]="miss";return {valid:true,hit:false};
+}
+function fireAtEnemy(r,c){
+  if(gameOver||turn!=="player"||passPending)return;
+  const result=fire(enemy,r,c);if(!result.valid)return;
+  if(result.hit){setNotice("Trúng đích tại "+cellLabel(r,c)+"!"+(result.sunk?" Đã đánh chìm "+result.name+".":""));}else setNotice("Bắn trượt tại "+cellLabel(r,c)+".");
+  render();
+  if(allSunk(enemy)){finish("Bạn chiến thắng!","Bạn đã đánh chìm toàn bộ hạm đội đối phương.");return;}
+  if(mode==="solo"){turn="ai";render();window.setTimeout(aiTurn,450);}
+}
+function aiTurn(){
+  if(gameOver)return;
+  let p=null;
+  while(aiTargets.length){let q=aiTargets.shift();if(enemy.shots[q[0]][q[1]]==="") { /* targets are built from hits on player's board below */ }}
+  // Prefer untried cells adjacent to any unsunk hit.
+  const candidates=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(player.shots[r][c]==="")candidates.push([r,c]);
+  let target=null;
+  if(aiTargets.length){
+    while(aiTargets.length&&!target){let q=aiTargets.shift();if(player.shots[q[0]][q[1]]==="")target=q;}
+  }
+  if(!target&&aiLastHit){
+    const [r,c]=aiLastHit;
+    [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(q=>{if(q[0]>=0&&q[0]<N&&q[1]>=0&&q[1]<N&&player.shots[q[0]][q[1]]==="")aiTargets.push(q);});
+    while(aiTargets.length&&!target){let q=aiTargets.shift();if(player.shots[q[0]][q[1]]==="")target=q;}
+  }
+  if(!target&&candidates.length)target=candidates[rand(candidates.length)];
+  if(!target)return;
+  const [r,c]=target,res=fire(player,r,c);
+  if(res.hit){
+    aiLastHit=[r,c];
+    [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(q=>{if(q[0]>=0&&q[0]<N&&q[1]>=0&&q[1]<N&&player.shots[q[0]][q[1]]==="")aiTargets.push(q);});
+    setNotice("Máy bắn trúng tàu của bạn tại "+cellLabel(r,c)+"."+(res.sunk?" Máy đã đánh chìm "+res.name+".":""));
+  }else{setNotice("Máy bắn trượt tại "+cellLabel(r,c)+".");}
+  if(res.sunk){aiLastHit=null;aiTargets=[];}
+  render();
+  if(allSunk(player)){finish("Máy chiến thắng","Toàn bộ hạm đội của bạn đã bị đánh chìm.");return;}
+  turn="player";render();
+}
+function showPass(title,msg){$("modalTitle").textContent=title;$("modalText").textContent=msg;$("passModal").classList.add("show");}
+function finish(title,msg){gameOver=true;render();$("endTitle").textContent=title;$("endText").textContent=msg;$("endModal").classList.add("show");}
+$("modalContinue").addEventListener("click",()=>{
+  $("passModal").classList.remove("show");passPending=false;
+  render();
+});
+$("soloMode").addEventListener("click",()=>{
+  if(onlineSocket && (onlineSocket.readyState===WebSocket.OPEN || onlineSocket.readyState===WebSocket.CONNECTING)){
+    onlineSocket.close();
+  }
+  onlineView=null;onlineReadySent=false;onlineConnected=false;
+  mode="solo";$("connection").textContent="Chế độ ngoại tuyến · chơi ngay";fresh();
+});
+$("newGame").addEventListener("click",fresh);
+function resetManualPlacement(){
+  if(mode!=="solo"){setNotice("Tự xếp thủ công hiện chỉ hỗ trợ chế độ Đấu với máy.");return;}
+  player=newBoard();
+  placingShips=true;shipIndex=0;verticalPlacement=false;turn="player";gameOver=false;
+  aiTargets=[];aiLastHit=null;aiDirection=null;
+  $("rotateBtn").textContent="Đổi hướng: ngang";
+  $("placementControls").style.display="flex";
+  $("confirmPlacement").disabled=true;
+  render();setNotice("Hãy xếp tàu thủ công. Chọn ô bắt đầu của từng tàu trên bàn cờ bên trái.");
+}
+$("rotateBtn").addEventListener("click",function(){
+  verticalPlacement=!verticalPlacement;
+  $("rotateBtn").textContent="Đổi hướng: "+(verticalPlacement?"dọc":"ngang");
+});
+$("randomPlacement").addEventListener("click",autoPlaceFleet);
+$("confirmPlacement").addEventListener("click",function(){
+  if(player.ships.length!==SHIPS.length){setNotice("Bạn cần đặt đủ 5 tàu trước khi bắt đầu.");return;}
+  placingShips=false;turn="player";$("placementControls").style.display="none";
+  render();setNotice("Bắt đầu trận! Chọn một ô trên bàn cờ đối phương để khai hỏa.");
+});
+function placeManualShip(r,c){
+  if(mode!=="solo"||!placingShips||shipIndex>=SHIPS.length)return;
+  const def=SHIPS[shipIndex];
+  if(!canPlace(player,r,c,def.size,verticalPlacement)){setNotice("Không thể đặt tàu tại ô này. Hãy chọn vị trí khác hoặc đổi hướng.");return;}
+  const cells=[];
+  for(let i=0;i<def.size;i++)cells.push([r+(verticalPlacement?i:0),c+(verticalPlacement?0:i)]);
+  player.ships.push({name:def.name,size:def.size,cells,hits:0,sunk:false});
+  shipIndex++;
+  if(shipIndex>=SHIPS.length){setNotice("Đã xếp đủ 5 tàu. Nhấn “Bắt đầu trận” để chơi.");}
+  else setNotice("Đã đặt "+def.name+". Tiếp theo: "+SHIPS[shipIndex].name+" ("+SHIPS[shipIndex].size+" ô).");
+  render();
+}
+function autoPlaceFleet(){
+  if(mode==="online"){
+    if(onlineView && onlineView.phase!=="placing"){setNotice("Không thể đổi vị trí tàu khi trận đấu đã bắt đầu.");return;}
+    onlineReadySent=false;onlineSend("random");setNotice("Máy chủ đang tự bố trí 5 tàu cho bạn.");return;
+  }
+  placeAll(player);placingShips=true;shipIndex=SHIPS.length;render();$("confirmPlacement").disabled=false;setNotice("Đã tự bố trí đủ 5 tàu (17 ô). Nhấn “Bắt đầu trận” để chơi.");
+}
+
+$("placeBtn").addEventListener("click",resetManualPlacement);
+$("resetShips").addEventListener("click",resetManualPlacement);
+$("playAgain").addEventListener("click",()=>{$("endModal").classList.remove("show");fresh();});
+
+// Kết nối WebSocket tới Haskell server cho chế độ chơi qua LAN.
+let onlineSocket=null, onlinePlayer="", onlineView=null, onlineReadySent=false, onlineConnected=false;
+function onlineConnect(){
+  if(onlineSocket && (onlineSocket.readyState===WebSocket.OPEN || onlineSocket.readyState===WebSocket.CONNECTING)) return;
+  const host=window.location.hostname || "localhost";
+  const scheme=window.location.protocol==="https:" ? "wss://" : "ws://";
+  onlineSocket=new WebSocket(scheme+host+":"+window.location.port+"/ws");
+  $("connection").textContent="Đang kết nối máy chủ LAN…";
+  onlineSocket.onopen=function(){onlineConnected=true;$("connection").textContent="Đã kết nối · chờ ghép trận";setNotice("Đã kết nối máy chủ. Đang chờ người chơi thứ hai…");};
+  onlineSocket.onmessage=function(event){onlineMessage(String(event.data));};
+  onlineSocket.onerror=function(){$("connection").textContent="Lỗi kết nối WebSocket";setNotice("Không thể kết nối máy chủ. Hãy kiểm tra server và địa chỉ IP.");};
+  onlineSocket.onclose=function(){onlineConnected=false;$("connection").textContent="Mất kết nối máy chủ";setNotice("Kết nối đã đóng. Hãy tải lại trang hoặc kết nối lại.");};
+}
+function onlineSend(command){
+  if(onlineSocket && onlineSocket.readyState===WebSocket.OPEN) onlineSocket.send(command);
+  else setNotice("Chưa kết nối máy chủ. Hãy chọn Chơi qua LAN để kết nối.");
+}
+function onlineMessage(message){
+  if(message.startsWith("WELCOME ")){
+    onlinePlayer=message.slice(8).trim();
+    $("connection").textContent="Đã kết nối · "+(onlinePlayer==="P1"?"Người chơi 1":"Người chơi 2");
+    onlineReadySent=false;
+    onlineSend("random");
+    setNotice("Đã ghép trận. Đang bố trí hạm đội…");
+  }else if(message.startsWith("INFO ")){
+    setNotice(message.slice(5));
+  }else if(message.startsWith("ERROR ")){
+    setNotice(message.slice(6));
+  }else if(message.startsWith("SHOT ")){
+    const parts=message.split(" ");
+    if(parts.length>=4) setNotice((parts[1]===onlinePlayer?"Bạn":"Đối thủ")+" bắn "+parts[2]+" — "+parts[3]+".");
+  }else if(message.startsWith("OVER ")){
+    const winner=message.slice(5).trim();
+    finish(winner===onlinePlayer?"Bạn chiến thắng!":"Đối thủ chiến thắng!","Ván đấu đã kết thúc.");
+  }else if(message.startsWith("VIEW|")){
+    onlineView=parseOnlineView(message);
+    if(onlineView && onlineView.phase==="placing" && onlineView.own.ships.length===5 && !onlineReadySent){
+      onlineReadySent=true;
+      onlineSend("ready");
+    }
+    if(onlineView && onlineView.phase==="playing"){
+      const myTurn=onlineView.turn===onlinePlayer;
+      turn=myTurn?"player":"opponent";
+      setNotice(myTurn?"Đến lượt bạn. Chọn một ô trên bàn cờ đối phương.":"Đang chờ đối thủ bắn…");
+    }
+    if(onlineView && onlineView.phase.startsWith("over:")){
+      const winner=onlineView.phase.split(":")[1];
+      finish(winner===onlinePlayer?"Bạn chiến thắng!":"Đối thủ chiến thắng!","Toàn bộ tàu của một bên đã bị đánh chìm.");
+    }
+    render();
+  }
+}
+function parseOnlineView(message){
+  const parts=message.split("|");
+  if(parts.length!==6)return null;
+  const own=newBoard(), enemy=newBoard();
+  const phase=parts[1], active=parts[2];
+  const shipNames={Carrier:"Tàu sân bay",Battleship:"Thiết giáp hạm",Cruiser:"Tuần dương hạm",Submarine:"Tàu ngầm",Destroyer:"Tàu tuần tra"};
+  function parseCoord(text){
+    const m=/^([A-J])([1-9]|10)$/.exec(text);
+    if(!m)return null;
+    return [m[1].charCodeAt(0)-65,Number(m[2])-1];
+  }
+  if(parts[3]){
+    parts[3].split(";").forEach(function(entry){
+      const at=entry.indexOf(":");if(at<0)return;
+      const type=entry.slice(0,at), coords=entry.slice(at+1), cells=[];
+      if(coords)coords.split(",").forEach(function(item){const q=parseCoord(item);if(q)cells.push(q);});
+      if(cells.length)own.ships.push({name:shipNames[type]||type,size:cells.length,cells:cells,hits:0,sunk:false});
+    });
+  }
+  if(parts[4]){
+    parts[4].split(",").forEach(function(item){
+      const q=parseCoord(item);if(!q)return;
+      const ship=own.ships.find(function(s){return s.cells.some(function(c){return c[0]===q[0]&&c[1]===q[1];});});
+      own.shots[q[0]][q[1]]=ship?"hit":"miss";
+      if(ship)ship.hits++;
+    });
+  }
+  own.ships.forEach(function(ship){ship.sunk=ship.hits>=ship.size;});
+  if(parts[5]){
+    parts[5].split(",").forEach(function(entry){
+      const at=entry.indexOf("=");if(at<0)return;
+      const q=parseCoord(entry.slice(0,at));if(!q)return;
+      const value=entry.slice(at+1);
+      enemy.shots[q[0]][q[1]]=value==="miss"?"miss":value==="hit"||value.startsWith("sunk:")?"hit":"";
+      if(value.startsWith("sunk:")){
+        const sunkName=shipNames[value.slice(5)]||value.slice(5);
+        enemy.ships.push({name:sunkName,size:0,cells:[q],hits:1,sunk:true});
+      }
+    });
+  }
+  return {phase:phase,turn:active,own:own,enemy:enemy};
+}
+function drawOnlineBoard(id,board,isEnemy){
+  const element=$(id);element.replaceChildren();
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const button=document.createElement("button");button.type="button";button.className="cell";
+    const shot=board.shots[r][c],ship=shipAt(board,r,c);
+    if(shot==="hit"){button.classList.add("hit");button.textContent="×";if(ship&&ship.sunk)button.classList.add("sunk");}
+    else if(shot==="miss"){button.classList.add("miss");}
+    else if(!isEnemy&&ship){button.classList.add("ship");}
+    button.disabled=!isEnemy||gameOver||!onlineView||onlineView.phase!=="playing"||onlineView.turn!==onlinePlayer||shot!=="";
+    if(isEnemy)button.addEventListener("click",function(){onlineFireAt(r,c);});
+    element.appendChild(button);
+  }
+}
+function onlineFireAt(r,c){
+  if(!onlineView||onlineView.phase!=="playing"||onlineView.turn!==onlinePlayer)return;
+  const row=String.fromCharCode(65+r), col=String(c+1);
+  onlineSend("fire "+row+col);
+}
+const offlineRenderForOnline=render;
+render=function(){
+  offlineRenderForOnline();
+  if(mode!=="online")return;
+  $("onlineMode").classList.add("active");
+  $("soloMode").classList.remove("active");
+  if(!onlineView){
+    $("leftTitle").textContent="Hạm đội của bạn";$("rightTitle").textContent="Hạm đội đối phương";
+    $("leftHint").textContent="Đang chờ dữ liệu từ máy chủ."; $("rightHint").textContent="Kết nối hai máy vào cùng trận.";
+    return;
+  }
+  drawOnlineBoard("ownBoard",onlineView.own,false);
+  drawOnlineBoard("enemyBoard",onlineView.enemy,true);
+  $("leftTitle").textContent="Hạm đội của bạn";
+  $("rightTitle").textContent="Hạm đội đối phương";
+  $("leftCount").textContent=onlineView.own.ships.length+" tàu";
+  $("rightCount").textContent="Bàn cờ đối phương";
+  $("ownHits").textContent="Thiệt hại: "+totalHits(onlineView.own)+"/17";
+  $("enemyHits").textContent="Đã bắn: "+onlineView.enemy.shots.flat().filter(function(x){return x!=="";}).length;
+  $("fleet").replaceChildren();
+  onlineView.own.ships.forEach(function(ship){const tag=document.createElement("span");tag.className="ship-tag"+(ship.sunk?" done":"");tag.textContent=ship.name+" ("+ship.size+")";$("fleet").appendChild(tag);});
+  $("leftHint").textContent=onlineView.phase==="placing"?"Đang xếp tàu tự động.":"Tàu của bạn được quản lý bởi server Haskell.";
+  $("rightHint").textContent=onlineView.phase==="playing"?(onlineView.turn===onlinePlayer?"Đến lượt bạn.":"Đang chờ đối thủ."):"Trận đấu chưa bắt đầu.";
+  $("onlineMode").classList.add("active");
+};
+$("onlineMode").addEventListener("click",function(){
+  if(mode==="online" && onlineSocket && (onlineSocket.readyState===WebSocket.OPEN || onlineSocket.readyState===WebSocket.CONNECTING)){
+    setNotice(onlineView && onlineView.phase==="playing" ? "Bạn đang ở trong trận LAN." : "Đang chờ ghép trận; giữ trang này mở để nhận đối thủ.");
+    return;
+  }
+  mode="online";gameOver=false;onlineView=null;onlineReadySent=false;
+  $("soloMode").classList.remove("active");$("onlineMode").classList.add("active");
+  onlineConnect();render();
+});
+const oldFireAtEnemy=fireAtEnemy;
+fireAtEnemy=function(r,c){
+  if(mode==="online"){onlineFireAt(r,c);return;}
+  oldFireAtEnemy(r,c);
+};
+
+fresh();
+})();
+</script>
+</body>
+</html>

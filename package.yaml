@@ -1,0 +1,48 @@
+name:         battleship
+version:      0.1.0.0
+synopsis:     Trò chơi Battleship (Hải chiến) bằng Haskell - đồ án môn Lập trình hàm
+category:     Game
+
+# Các thư viện đều có sẵn trong Stackage lts-21.25 (GHC 9.4.7).
+dependencies:
+  - base >= 4.7 && < 5
+
+ghc-options:
+  - -Wall
+
+# Lõi game nằm trong library để cả chương trình lẫn test đều dùng chung.
+library:
+  source-dirs: src
+  dependencies:
+    - containers
+    - network
+    - stm
+    - time
+    - text
+    - bytestring
+    - directory
+    - filepath
+    - http-types
+    - wai
+    - wai-websockets
+    - warp
+    - websockets
+
+executables:
+  battleship:
+    main:        Main.hs
+    source-dirs: app
+    ghc-options:
+      - -threaded
+      - -rtsopts
+    dependencies:
+      - battleship
+
+tests:
+  battleship-test:
+    main:        Spec.hs
+    source-dirs: test
+    dependencies:
+      - battleship
+      - containers
+      - QuickCheck

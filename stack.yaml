@@ -1,0 +1,6 @@
+# Stackage lts-21.25 dùng GHC 9.4.7, đúng phiên bản đã dùng để biên dịch và
+# kiểm thử project này. Cố định resolver giúp cả nhóm build ra cùng kết quả.
+resolver: lts-21.25
+
+packages:
+  - .
