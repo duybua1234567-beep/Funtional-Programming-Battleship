@@ -41,7 +41,6 @@ h1{font-size:clamp(23px,4vw,34px);margin:0;letter-spacing:.3px}.sub{margin-top:5
       <button id="onlineMode">Chơi qua LAN</button>
     </div>
     <button id="newGame" class="primary">Ván mới</button>
-    <button id="placeBtn">Xếp tàu thủ công</button>
   </div>
 
   <div id="notice" class="notice" role="status">Đang chuẩn bị chiến trường…</div>
@@ -100,7 +99,7 @@ function shipAt(board,r,c){return board.ships.find(s=>s.cells.some(p=>p[0]===r&&
 function totalHits(board){return board.ships.reduce((n,s)=>n+s.hits,0);}
 function remaining(board){return board.ships.reduce((n,s)=>n+(s.size-s.hits),0);}
 function allSunk(board){return board.ships.every(s=>s.sunk);}
-function fresh(){player=newBoard();enemy=newBoard();placeAll(enemy);turn="player";gameOver=false;passPending=false;aiTargets=[];aiLastHit=null;aiDirection=null;placingShips=true;shipIndex=0;verticalPlacement=false;render();setNotice(mode==="solo"?"Hãy tự xếp 5 tàu của bạn. Chọn ô bắt đầu của từng tàu.":"Người chơi 1: hãy xếp tàu trên máy chủ.");}
+function fresh(){$("newGame").textContent="Ván mới";player=newBoard();enemy=newBoard();placeAll(enemy);turn="player";gameOver=false;passPending=false;aiTargets=[];aiLastHit=null;aiDirection=null;placingShips=true;shipIndex=0;verticalPlacement=false;render();setNotice(mode==="solo"?"Hãy tự xếp 5 tàu của bạn. Chọn ô bắt đầu của từng tàu.":"Người chơi 1: hãy xếp tàu trên máy chủ.");}
 function setNotice(t){$("notice").textContent=t;}
 function cellLabel(r,c){return String.fromCharCode(65+c)+(r+1);}
 function makeCell(boardName,r,c){
@@ -187,7 +186,7 @@ function aiTurn(){
   turn="player";render();
 }
 function showPass(title,msg){$("modalTitle").textContent=title;$("modalText").textContent=msg;$("passModal").classList.add("show");}
-function finish(title,msg){gameOver=true;render();$("endTitle").textContent=title;$("endText").textContent=msg;$("endModal").classList.add("show");}
+function finish(title,msg){gameOver=true;render();$("newGame").textContent=mode==="online"?"Chơi lại":"Ván mới";$("playAgain").textContent="Chơi lại";$("endTitle").textContent=title;$("endText").textContent=msg;$("endModal").classList.add("show");}
 $("modalContinue").addEventListener("click",()=>{
   $("passModal").classList.remove("show");passPending=false;
   render();
@@ -271,7 +270,6 @@ function autoPlaceFleet(){
   placeAll(player);placingShips=true;shipIndex=SHIPS.length;render();$("confirmPlacement").disabled=false;setNotice("Đã tự bố trí đủ 5 tàu (17 ô). Nhấn “Bắt đầu trận” để chơi.");
 }
 
-$("placeBtn").addEventListener("click",resetManualPlacement);
 $("resetShips").addEventListener("click",resetManualPlacement);
 $("playAgain").addEventListener("click",()=>{
   if(mode==="online"){
@@ -311,6 +309,7 @@ function onlineMessage(message){
     onlinePlayer=message.slice(8).trim();
     $("connection").textContent="Đã kết nối · "+(onlinePlayer==="P1"?"Người chơi 1":"Người chơi 2");
     onlineReadySent=false;
+    $("newGame").textContent="Ván mới";
     verticalPlacement=false;
     $("rotateBtn").textContent="Đổi hướng: ngang";
     setNotice("Đã ghép trận. Hãy tự xếp tàu trên bàn cờ bên trái.");
@@ -319,8 +318,8 @@ function onlineMessage(message){
     if(infoText.includes("Đã sẵn sàng")){onlineReadySent=true;render();}
     if(infoText.includes("Đối thủ muốn chơi ván mới")){
       rematchRequestedByOpponent=true;
-      $("newGame").textContent="Xác nhận ván mới";
-      $("playAgain").textContent="Xác nhận ván mới";
+      $("newGame").textContent="Xác nhận chơi lại";
+      $("playAgain").textContent="Xác nhận chơi lại";
       $("endModal").classList.add("show");
       $("endTitle").textContent="Đối thủ muốn chơi lại";
       $("endText").textContent="Ván cũ đã được giữ trong lịch sử. Nhấn xác nhận để bắt đầu ván mới.";
@@ -338,7 +337,7 @@ function onlineMessage(message){
     onlineView=parseOnlineView(message);
     if(onlineView && onlineView.phase==="placing"){
       rematchRequestedByOpponent=false;
-      $("newGame").textContent="Ván mới";
+      $("newGame").textContent="Chơi lại";
       $("playAgain").textContent="Chơi lại";
       $("endModal").classList.remove("show");
       gameOver=false;placingShips=true;turn="player";onlineReadySent=false;
