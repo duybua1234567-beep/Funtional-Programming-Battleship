@@ -117,3 +117,19 @@ Gợi ý cho báo cáo UI/UX: vẽ wireframe cho bản web, mô tả user flow (
 - Chưa có chức năng chơi lại (rematch) trong cùng kết nối: muốn chơi lại thì thoát và kết nối lại.
 - Giao thức không mã hóa; chỉ dùng trong mạng nội bộ.
 - Xếp tàu xong và bấm `ready` thì không đổi được nữa.
+
+## Bổ sung: đồng thời và lưu trữ dữ liệu
+
+- `src/WebServer.hs`: `forkIO` chạy bộ ghép trận và các luồng reader/writer; mỗi người chơi có luồng đọc WebSocket riêng, mỗi writer lấy thông điệp từ `TQueue`.
+- `TVar Room` cùng `atomically` bảo vệ cập nhật trạng thái trận đấu. Hai lệnh đến đồng thời được tuần tự hóa theo các giao dịch STM, tránh cập nhật mất dữ liệu.
+- `Chan Pending` xếp hàng người đang chờ ghép trận; `MVar` báo hiệu kết thúc và khóa thao tác ghi lịch sử.
+- `data/match-history.log` là nhật ký sự kiện lưu bền: server đọc tệp khi khởi động, ghi lệnh/sự kiện kèm dấu thời gian UTC; `MVar` tuần tự hóa ghi đồng thời; endpoint `/history` cho phép đọc lại. Nhật ký phục vụ kiểm tra lịch sử, không phải snapshot để khôi phục ván đang chơi dở.
+- `src/Server.hs` và `src/Client.hs` dùng socket TCP; `src/WebServer.hs` dùng WebSocket qua HTTP để trao đổi thông điệp giữa hai trình duyệt trong LAN.
+- Chạy web bằng `cabal run battleship -- web +RTS -N -RTS` để bật runtime nhiều capability; executable đã bật `-threaded` và `-rtsopts` trong `battleship.cabal`.
+
+
+## Khôi phục phiên chơi LAN sau khi server dừng
+
+`WebServer.hs` ghi cấu trúc `SavedMatch` (phòng `Room` cùng IP LAN của P1/P2) vào `data/active-match.txt`. Các kiểu dữ liệu của phòng và ván đấu hỗ trợ `Read`/`Show` để tuần tự hóa trạng thái. Mỗi lệnh được xử lý dưới `roomLock`, cập nhật `TVar Room`, rồi ghi snapshot; `MVar` bảo vệ snapshot và nhật ký khỏi các lần ghi đồng thời. Khi khởi động lại, server chỉ chấp nhận hai IP đã lưu và đợi cả hai kết nối lại, rồi gán đúng P1/P2 và gửi lại `View` riêng cho từng bên. Khi ván kết thúc, snapshot đang chơi được xóa.
+
+Đây là cơ chế khôi phục trạng thái gần nhất, không phải xác thực danh tính chống giả mạo IP. Nên cố định DHCP lease cho hai máy trong mạng LAN.
