@@ -27,18 +27,18 @@ boardSize = 10
 
 -- | Một ô: hàng và cột, đánh số từ 0. Người chơi gõ "B7" = hàng 1, cột 6.
 data Coord = Coord { cRow :: !Int, cCol :: !Int }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Read)
 
 data Orientation = Horizontal | Vertical
-  deriving (Eq, Ord, Show, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 -- | Năm loại tàu. 'Enum' + 'Bounded' cho phép viết [minBound .. maxBound]
 -- để lấy cả hạm đội mà không phải liệt kê tay.
 data ShipType = Carrier | Battleship | Cruiser | Submarine | Destroyer
-  deriving (Eq, Ord, Show, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 data Player = P1 | P2
-  deriving (Eq, Ord, Show, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 other :: Player -> Player
 other P1 = P2
@@ -56,26 +56,26 @@ players = [minBound .. maxBound]
 data Board = Board
   { bShips :: Map ShipType (Set Coord)
   , bShots :: Set Coord
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Read)
 
 -- | Kết quả của một phát bắn.
 data ShotResult = Miss | Hit | Sunk ShipType
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
 
 -- | Một ô trên bàn cờ mà đối thủ nhìn thấy.
 data PublicCell = PMiss | PHit | PSunk ShipType
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
 
 -- | Phần bàn cờ công khai: chỉ chứa các ô ĐÃ bị bắn.
 newtype PublicBoard = PublicBoard (Map Coord PublicCell)
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
 
 -- | Ván đấu đang diễn ra (sau khi cả hai đã xếp tàu xong).
 data Game = Game
   { gBoard1 :: Board
   , gBoard2 :: Board
   , gTurn   :: Player
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Read)
 
 -- ---------------------------------------------------------------------------
 -- Lỗi (dùng Either thay cho exception: lỗi là một giá trị bình thường)
@@ -84,14 +84,14 @@ data PlaceError
   = PlaceOutOfBounds
   | PlaceOverlap
   | PlaceDuplicate ShipType
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
 
 data FireError
   = FireOutOfRange
   | FireAlreadyShot
   | FireNotYourTurn
   | FireGameOver
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
 
 -- ---------------------------------------------------------------------------
 -- Giao tiếp người chơi <-> server
@@ -105,10 +105,10 @@ data Command
   | Ready
   | Help
   | Quit
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
 
 data Phase = Placing | Playing | Over Player
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
 
 -- | Ảnh chụp trạng thái ván đấu TỪ GÓC NHÌN của một người chơi.
 -- Chú ý 'vEnemy' có kiểu 'PublicBoard': không có chỗ nào để lọt vị trí tàu địch.
@@ -117,7 +117,7 @@ data View = View
   , vTurn  :: Maybe Player   -- ^ Nothing khi chưa bắt đầu bắn
   , vOwn   :: Board
   , vEnemy :: PublicBoard
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Read)
 
 -- | Thông điệp server gửi cho người chơi.
 data ServerMsg
@@ -127,4 +127,4 @@ data ServerMsg
   | SView View
   | SShot Player Coord ShotResult   -- ^ ai bắn ô nào, kết quả gì
   | SGameOver Player                -- ^ người thắng
-  deriving (Eq, Show)
+  deriving (Eq, Show, Read)
