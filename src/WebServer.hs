@@ -226,21 +226,20 @@ reader historyFile historyLock activeFile savedMatchVar roomLock p1IP p2IP p con
         Left err -> atomically (tell p (SError err)) >> loop
         Right Quit -> appendHistory historyFile historyLock (show p ++ " | quit; giữ trạng thái để khôi phục")
         Right cmd -> do
-          over <- withMVar roomLock $ \_ -> do
+          (wasOver, nowOver) <- withMVar roomLock $ \_ -> do
             current <- readTVarIO roomVar
-            let (next, outs) = stepRoom p cmd current
+            let wasOver = isOver current
+                (next, outs) = stepRoom p cmd current
+                nowOver = isOver next
             atomically $ do
               writeTVar roomVar next
               forM_ outs (uncurry tell)
             persistRoom activeFile savedMatchVar p1IP p2IP next
-            pure (isOver next)
+            pure (wasOver, nowOver)
           appendHistory historyFile historyLock (show p ++ " | " ++ T.unpack raw)
-          if over
-            then do
-              clearActiveMatch activeFile savedMatchVar
-              appendHistory historyFile historyLock ("MATCH END: P1=" ++ p1IP ++ " P2=" ++ p2IP ++ " | ván đấu đã kết thúc; lịch sử được giữ lại, sẵn sàng tạo ván mới")
-            else pure ()
-          unless over loop
+          when (nowOver && not wasOver) $
+            appendHistory historyFile historyLock ("MATCH END: P1=" ++ p1IP ++ " P2=" ++ p2IP ++ " | ván cũ đã kết thúc; lịch sử được giữ lại")
+          loop
     tell to msg = forM_ (Map.lookup to queues) (`writeTQueue` msg)
 
 persistRoom :: FilePath -> MVar (Maybe SavedMatch) -> String -> String -> Room -> IO ()
