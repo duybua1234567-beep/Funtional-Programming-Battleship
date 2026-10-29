@@ -8,14 +8,16 @@ import Control.Exception
 import Control.Monad
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString.Lazy as BL
 import Network.HTTP.Types (status200, status404)
 import Network.Wai
 import Network.Wai.Handler.Warp (defaultSettings, setPort, setHost, runSettings)
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import Network.WebSockets
-import System.Directory (doesFileExist)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath ((</>))
+import Data.Time (getCurrentTime, formatTime, defaultTimeLocale)
 
 import Parser (parseCommand)
 import Protocol (encodeServerMsg)
@@ -28,10 +30,29 @@ type Pending = (Connection, MVar ())
 runWebServer :: Int -> IO ()
 runWebServer port = do
   waiting <- newChan
-  _ <- forkIO (pairPlayers waiting)
+  historyLock <- newMVar ()
+  let historyFile = "data" </> "match-history.log"
+  createDirectoryIfMissing True "data"
+  historyExists <- doesFileExist historyFile
+  unless historyExists (writeFile historyFile "")
+  historyText <- withMVar historyLock (\_ -> do
+    contents <- readFile historyFile
+    _ <- evaluate (length contents)
+    pure contents)
+  putStrLn ("Đã nạp lịch sử từ tệp: " ++ show (length (lines historyText)) ++ " dòng.")
+  _ <- forkIO (pairPlayers historyFile historyLock waiting)
   let wsApp = handleConnection waiting
       httpApp req respond
         | pathInfo req == ["ws"] = respond (responseLBS status404 [] "WebSocket endpoint only")
+        | pathInfo req == ["history"] = do
+            result <- try (withMVar historyLock (\_ -> do
+              contents <- readFile historyFile
+              _ <- evaluate (length contents)
+              pure contents))
+              :: IO (Either IOException String)
+            case result of
+              Left _ -> respond (responseLBS status404 [("Content-Type", "text/plain; charset=utf-8")] "Chưa có lịch sử trận đấu.")
+              Right contents -> respond (responseLBS status200 [("Content-Type", "text/plain; charset=utf-8")] (BL.fromStrict (TE.encodeUtf8 (T.pack contents))))
         | pathInfo req == [] || pathInfo req == ["index.html"] = do
             let file = "web" </> "index.html"
             exists <- doesFileExist file
@@ -56,8 +77,8 @@ handleConnection waiting pending = do
   putStrLn "Một trình duyệt đã kết nối WebSocket; đang chờ ghép trận."
   takeMVar done
 
-pairPlayers :: Chan Pending -> IO ()
-pairPlayers waiting = forever $ do
+pairPlayers :: FilePath -> MVar () -> Chan Pending -> IO ()
+pairPlayers historyFile historyLock waiting = forever $ do
   first <- readChan waiting
   firstAlive <- probePending first
   if not firstAlive
@@ -69,7 +90,7 @@ pairPlayers waiting = forever $ do
       if firstStillAlive && secondAlive
         then do
           putStrLn "Đã ghép hai người chơi."
-          _ <- forkIO $ (runMatchWS (fst first) (fst second))
+          _ <- forkIO $ (runMatchWS historyFile historyLock (fst first) (fst second))
                 `catch` (\e -> putStrLn ("Lỗi trận đấu: " ++ show (e :: SomeException)))
                 `finally` (finishPending first >> finishPending second)
           pure ()
@@ -90,8 +111,9 @@ probePending (conn, _) = do
 finishPending :: Pending -> IO ()
 finishPending (_, done) = void (tryPutMVar done ())
 
-runMatchWS :: Connection -> Connection -> IO ()
-runMatchWS c1 c2 = do
+runMatchWS :: FilePath -> MVar () -> Connection -> Connection -> IO ()
+runMatchWS historyFile historyLock c1 c2 = do
+  appendHistory historyFile historyLock "MATCH START: đã ghép đủ hai người chơi"
   seed <- freshSeed
   roomVar <- newTVarIO (initialRoom seed)
   q1 <- newTQueueIO
@@ -108,12 +130,13 @@ runMatchWS c1 c2 = do
   tids <- sequence
     [ forkIO (writer c1 q1)
     , forkIO (writer c2 q2)
-    , forkIO (reader P1 c1 roomVar queues done)
-    , forkIO (reader P2 c2 roomVar queues done)
+    , forkIO (reader historyFile historyLock P1 c1 roomVar queues done)
+    , forkIO (reader historyFile historyLock P2 c2 roomVar queues done)
     ]
   takeMVar done
   threadDelay 250000
   mapM_ killThread tids
+  appendHistory historyFile historyLock "MATCH END: phiên chơi đã kết thúc"
   putStrLn "Trận WebSocket kết thúc; chờ cặp tiếp theo."
 
 writer :: Connection -> TQueue ServerMsg -> IO ()
@@ -121,16 +144,17 @@ writer conn queue = forever $ do
   msg <- atomically (readTQueue queue)
   sendTextData conn (T.pack (encodeServerMsg msg))
 
-reader :: Player -> Connection -> TVar Room -> Map.Map Player (TQueue ServerMsg) -> MVar () -> IO ()
-reader p conn roomVar queues done =
+reader :: FilePath -> MVar () -> Player -> Connection -> TVar Room -> Map.Map Player (TQueue ServerMsg) -> MVar () -> IO ()
+reader historyFile historyLock p conn roomVar queues done =
   (loop `catch` (\(_ :: SomeException) -> pure ())) `finally` (void (tryPutMVar done ()))
   where
     loop = do
       raw <- receiveData conn :: IO T.Text
       case parseCommand (T.unpack raw) of
         Left err -> atomically (tell p (SError err)) >> loop
-        Right Quit -> pure ()
+        Right Quit -> appendHistory historyFile historyLock (show p ++ " | quit")
         Right cmd -> do
+          appendHistory historyFile historyLock (show p ++ " | " ++ T.unpack raw)
           over <- atomically $ do
             room <- readTVar roomVar
             let (room', outs) = stepRoom p cmd room
@@ -139,3 +163,11 @@ reader p conn roomVar queues done =
             isOver <$> readTVar roomVar
           unless over loop
     tell to msg = forM_ (Map.lookup to queues) (`writeTQueue` msg)
+
+-- Ghi nhật ký có dấu thời gian; MVar tuần tự hóa các lần ghi từ nhiều luồng.
+appendHistory :: FilePath -> MVar () -> String -> IO ()
+appendHistory path lock message = do
+  now <- getCurrentTime
+  let timestamp = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S UTC" now
+  withMVar lock $ \_ ->
+    appendFile path (timestamp ++ " | " ++ message ++ "\n")
