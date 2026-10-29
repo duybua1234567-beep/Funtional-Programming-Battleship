@@ -261,7 +261,21 @@ function autoPlaceFleet(){
 
 $("placeBtn").addEventListener("click",resetManualPlacement);
 $("resetShips").addEventListener("click",resetManualPlacement);
-$("playAgain").addEventListener("click",()=>{$("endModal").classList.remove("show");fresh();});
+$("playAgain").addEventListener("click",()=>{
+  $("endModal").classList.remove("show");
+  if(mode==="online"){
+    // Giữ nguyên chế độ LAN, nhưng mở kết nối mới để hai người chơi ván kế tiếp.
+    if(onlineSocket && onlineSocket.readyState!==WebSocket.CLOSED) onlineSocket.close();
+    onlineSocket=null;onlinePlayer="";onlineView=null;onlineReadySent=false;onlineConnected=false;
+    gameOver=false;placingShips=true;turn="player";verticalPlacement=false;passPending=false;
+    $("rotateBtn").textContent="Đổi hướng: ngang";
+    setNotice("Đang tạo ván LAN mới. Cả hai người chơi hãy chọn Chơi qua LAN để ghép lại.");
+    render();
+    setTimeout(()=>onlineConnect(),300);
+  }else{
+    fresh();
+  }
+});
 
 // Kết nối WebSocket tới Haskell server cho chế độ chơi qua LAN.
 let onlineSocket=null, onlinePlayer="", onlineView=null, onlineReadySent=false, onlineConnected=false;
@@ -274,7 +288,7 @@ function onlineConnect(){
   onlineSocket.onopen=function(){onlineConnected=true;$("connection").textContent="Đã kết nối · chờ ghép trận";setNotice("Đã kết nối máy chủ. Đang chờ người chơi thứ hai…");};
   onlineSocket.onmessage=function(event){onlineMessage(String(event.data));};
   onlineSocket.onerror=function(){$("connection").textContent="Lỗi kết nối WebSocket";setNotice("Không thể kết nối máy chủ. Hãy kiểm tra server và địa chỉ IP.");};
-  onlineSocket.onclose=function(){onlineConnected=false;$("connection").textContent="Mất kết nối máy chủ";setNotice("Mất kết nối. Nếu máy chủ vừa khởi động lại, hãy chọn Chơi qua LAN trên cả hai máy để khôi phục ván cũ.");};
+  onlineSocket.onclose=function(){onlineConnected=false;$("connection").textContent="Mất kết nối máy chủ";setNotice("Mất kết nối. Hãy chọn Chơi qua LAN để kết nối lại hoặc bắt đầu ván tiếp theo.");};
 }
 function onlineSend(command){
   if(onlineSocket && onlineSocket.readyState===WebSocket.OPEN) onlineSocket.send(command);
