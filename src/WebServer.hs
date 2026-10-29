@@ -182,7 +182,7 @@ finishPending (_, done, _) = void (tryPutMVar done ())
 
 runMatchWS :: FilePath -> MVar () -> FilePath -> MVar (Maybe SavedMatch) -> Room -> String -> String -> Connection -> Connection -> IO ()
 runMatchWS historyFile historyLock activeFile savedMatchVar initial p1IP p2IP c1 c2 = do
-  appendHistory historyFile historyLock ("MATCH RESUME/START: P1=" ++ p1IP ++ " P2=" ++ p2IP)
+  appendHistory historyFile historyLock ("MATCH START/RESUME: P1=" ++ p1IP ++ " P2=" ++ p2IP)
   roomVar <- newTVarIO initial
   roomLock <- newMVar ()
   q1 <- newTQueueIO
@@ -238,7 +238,7 @@ reader historyFile historyLock activeFile savedMatchVar roomLock p1IP p2IP p con
           if over
             then do
               clearActiveMatch activeFile savedMatchVar
-              appendHistory historyFile historyLock "MATCH END: ván đấu đã kết thúc"
+              appendHistory historyFile historyLock ("MATCH END: P1=" ++ p1IP ++ " P2=" ++ p2IP ++ " | ván đấu đã kết thúc; lịch sử được giữ lại, sẵn sàng tạo ván mới")
             else pure ()
           unless over loop
     tell to msg = forM_ (Map.lookup to queues) (`writeTQueue` msg)
