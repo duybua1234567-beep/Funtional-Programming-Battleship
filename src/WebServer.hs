@@ -10,7 +10,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString.Lazy as BL
-import Data.Maybe (readMaybe)
+import Text.Read (readMaybe)
 import Network.HTTP.Types (status200, status404)
 import Network.Socket (SockAddr(..), hostAddressToTuple)
 import Network.Wai
