@@ -20,6 +20,7 @@ import Network.WebSockets
 import System.Directory (createDirectoryIfMissing, doesFileExist, removeFile)
 import System.FilePath ((</>))
 import Data.Time (getCurrentTime, formatTime, defaultTimeLocale)
+import Data.Maybe (isJust)
 
 import Parser (parseCommand)
 import Protocol (encodeServerMsg)
@@ -226,19 +227,23 @@ reader historyFile historyLock activeFile savedMatchVar roomLock p1IP p2IP p con
         Left err -> atomically (tell p (SError err)) >> loop
         Right Quit -> appendHistory historyFile historyLock (show p ++ " | quit; giữ trạng thái để khôi phục")
         Right cmd -> do
-          (wasOver, nowOver) <- withMVar roomLock $ \_ -> do
+          (wasOver, nowOver, abandoned) <- withMVar roomLock $ \_ -> do
             current <- readTVarIO roomVar
             let wasOver = isOver current
+                wasPlaying = isJust (rGame current) && not wasOver
                 (next, outs) = stepRoom p cmd current
                 nowOver = isOver next
+                abandoned = wasPlaying && not (isJust (rGame next))
             atomically $ do
               writeTVar roomVar next
               forM_ outs (uncurry tell)
             persistRoom activeFile savedMatchVar p1IP p2IP next
-            pure (wasOver, nowOver)
+            pure (wasOver, nowOver, abandoned)
           appendHistory historyFile historyLock (show p ++ " | " ++ T.unpack raw)
           when (nowOver && not wasOver) $
-            appendHistory historyFile historyLock ("MATCH END: P1=" ++ p1IP ++ " P2=" ++ p2IP ++ " | ván cũ đã kết thúc; lịch sử được giữ lại")
+            appendHistory historyFile historyLock ("MATCH END: P1=" ++ p1IP ++ " P2=" ++ p2IP ++ " | ván đấu hoàn tất")
+          when abandoned $
+            appendHistory historyFile historyLock ("MATCH ABANDONED/RESTARTED: P1=" ++ p1IP ++ " P2=" ++ p2IP ++ " | ván đấu dở dang được lưu khi hai người xác nhận chơi lại")
           loop
     tell to msg = forM_ (Map.lookup to queues) (`writeTQueue` msg)
 
