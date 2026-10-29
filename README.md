@@ -5,7 +5,13 @@
 Dự án Battleship có chế độ chơi với máy và chế độ hai người qua mạng LAN. Giao diện web nằm tại `web/index.html`; phần luật chơi và quản lý phiên LAN nằm trong mã nguồn Haskell tại `src/`.
 
 ## Chạy dự án
-
+Dự án chạy bằng haskell, sử dụng thư viện ghci 
+```bash
+https://www.haskell.org/ghcup/install/
+```
+```bash
+https://www.haskell.org/get-started/
+```
 Mở terminal tại thư mục gốc `battleship`.
 
 ```bash
