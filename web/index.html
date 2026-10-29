@@ -41,6 +41,7 @@ h1{font-size:clamp(23px,4vw,34px);margin:0;letter-spacing:.3px}.sub{margin-top:5
       <button id="onlineMode">Chơi qua LAN</button>
     </div>
     <button id="newGame" class="primary">Ván mới</button>
+    <button id="restartMatch" style="display:none">Chơi lại giữa trận</button>
   </div>
 
   <div id="notice" class="notice" role="status">Đang chuẩn bị chiến trường…</div>
@@ -195,7 +196,7 @@ $("soloMode").addEventListener("click",()=>{
   if(onlineSocket && (onlineSocket.readyState===WebSocket.OPEN || onlineSocket.readyState===WebSocket.CONNECTING)){
     onlineSocket.close();
   }
-  onlineView=null;onlineReadySent=false;onlineConnected=false;
+  onlineView=null;onlineReadySent=false;onlineConnected=false;$("restartMatch").style.display="none";
   mode="solo";$("connection").textContent="Chế độ ngoại tuyến · chơi ngay";fresh();
 });
 $("newGame").addEventListener("click",function(){
@@ -211,6 +212,12 @@ $("newGame").addEventListener("click",function(){
   }
   fresh();
 });
+$("restartMatch").addEventListener("click",()=>{
+  if(mode!=="online" || !onlineView || onlineView.phase!=="playing"){setNotice("Chơi lại giữa trận chỉ khả dụng khi đang đấu LAN.");return;}
+  onlineSend("reset");
+  setNotice(rematchRequestedByOpponent?"Đã xác nhận chơi lại. Đang chờ máy chủ tạo ván mới…":"Đã gửi yêu cầu chơi lại. Ván đấu tạm dừng cho đến khi đối thủ xác nhận.");
+});
+
 function resetManualPlacement(){
   if(mode==="online"){
     if(!onlineView||onlineView.phase!=="placing"||onlineReadySent){setNotice("Chỉ có thể xếp lại tàu trước khi bạn xác nhận hạm đội.");return;}
@@ -309,6 +316,7 @@ function onlineMessage(message){
     onlinePlayer=message.slice(8).trim();
     $("connection").textContent="Đã kết nối · "+(onlinePlayer==="P1"?"Người chơi 1":"Người chơi 2");
     onlineReadySent=false;
+    $("restartMatch").style.display="inline-block";
     $("newGame").textContent="Ván mới";
     verticalPlacement=false;
     $("rotateBtn").textContent="Đổi hướng: ngang";
@@ -316,13 +324,15 @@ function onlineMessage(message){
   }else if(message.startsWith("INFO ")){
     const infoText=message.slice(5);
     if(infoText.includes("Đã sẵn sàng")){onlineReadySent=true;render();}
-    if(infoText.includes("Đối thủ muốn chơi ván mới")){
+    if(infoText.includes("Đối thủ muốn chơi lại") || infoText.includes("Đối thủ muốn chơi ván mới")){
       rematchRequestedByOpponent=true;
-      $("newGame").textContent="Xác nhận chơi lại";
+      $("newGame").textContent=onlineView && onlineView.phase.startsWith("over:")?"Xác nhận chơi lại":"Xác nhận chơi lại";
+      $("restartMatch").textContent="Xác nhận chơi lại";
+      $("restartMatch").style.display="inline-block";
       $("playAgain").textContent="Xác nhận chơi lại";
       $("endModal").classList.add("show");
       $("endTitle").textContent="Đối thủ muốn chơi lại";
-      $("endText").textContent="Ván cũ đã được giữ trong lịch sử. Nhấn xác nhận để bắt đầu ván mới.";
+      $("endText").textContent="Nếu ván chưa kết thúc, ván hiện tại sẽ được ghi nhận là dở dang. Nhấn xác nhận để cả hai bắt đầu ván mới.";
     }
     setNotice(infoText);
   }else if(message.startsWith("ERROR ")){
@@ -337,7 +347,9 @@ function onlineMessage(message){
     onlineView=parseOnlineView(message);
     if(onlineView && onlineView.phase==="placing"){
       rematchRequestedByOpponent=false;
-      $("newGame").textContent="Chơi lại";
+      $("newGame").textContent="Ván mới";
+      $("restartMatch").textContent="Chơi lại giữa trận";
+      $("restartMatch").style.display="inline-block";
       $("playAgain").textContent="Chơi lại";
       $("endModal").classList.remove("show");
       gameOver=false;placingShips=true;turn="player";onlineReadySent=false;
