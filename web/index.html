@@ -120,7 +120,8 @@ function makeCell(boardName,r,c){
     button.disabled=gameOver||placingShips||turn!=="player"||shot!==""||passPending;
     button.addEventListener("click",()=>fireAtEnemy(r,c));
   }else{
-    button.disabled=!(mode==="solo"&&placingShips);
+    const onlinePlacing=mode==="online"&&onlineView&&onlineView.phase==="placing"&&!onlineReadySent;
+    button.disabled=!(mode==="solo"&&placingShips)&&!onlinePlacing;
     if(mode==="solo"&&placingShips) button.addEventListener("click",()=>placeManualShip(r,c));
   }
   return button;
@@ -200,7 +201,16 @@ $("soloMode").addEventListener("click",()=>{
 });
 $("newGame").addEventListener("click",fresh);
 function resetManualPlacement(){
-  if(mode!=="solo"){setNotice("Tự xếp thủ công hiện chỉ hỗ trợ chế độ Đấu với máy.");return;}
+  if(mode==="online"){
+    if(!onlineView||onlineView.phase!=="placing"||onlineReadySent){setNotice("Chỉ có thể xếp lại tàu trước khi bạn xác nhận hạm đội.");return;}
+    onlineReadySent=false;
+    onlineSend("reset");
+    verticalPlacement=false;
+    $("rotateBtn").textContent="Đổi hướng: ngang";
+    setNotice("Đã yêu cầu đặt lại hạm đội. Chọn ô bắt đầu của từng tàu.");
+    render();
+    return;
+  }
   player=newBoard();
   placingShips=true;shipIndex=0;verticalPlacement=false;turn="player";gameOver=false;
   aiTargets=[];aiLastHit=null;aiDirection=null;
@@ -215,6 +225,16 @@ $("rotateBtn").addEventListener("click",function(){
 });
 $("randomPlacement").addEventListener("click",autoPlaceFleet);
 $("confirmPlacement").addEventListener("click",function(){
+  if(mode==="online"){
+    if(!onlineView||onlineView.phase!=="placing"){setNotice("Bạn không thể xác nhận bố trí tàu lúc này.");return;}
+    if(onlineView.own.ships.length!==SHIPS.length){setNotice("Bạn cần đặt đủ 5 tàu trước khi xác nhận.");return;}
+    if(onlineReadySent)return;
+    onlineReadySent=true;
+    onlineSend("ready");
+    render();
+    setNotice("Đã xác nhận hạm đội. Đang chờ đối thủ xác nhận...");
+    return;
+  }
   if(player.ships.length!==SHIPS.length){setNotice("Bạn cần đặt đủ 5 tàu trước khi bắt đầu.");return;}
   placingShips=false;turn="player";$("placementControls").style.display="none";
   render();setNotice("Bắt đầu trận! Chọn một ô trên bàn cờ đối phương để khai hỏa.");
@@ -234,7 +254,7 @@ function placeManualShip(r,c){
 function autoPlaceFleet(){
   if(mode==="online"){
     if(onlineView && onlineView.phase!=="placing"){setNotice("Không thể đổi vị trí tàu khi trận đấu đã bắt đầu.");return;}
-    onlineReadySent=false;onlineSend("random");setNotice("Máy chủ đang tự bố trí 5 tàu cho bạn.");return;
+    onlineReadySent=false;onlineSend("random");setNotice("Máy chủ đang tự bố trí 5 tàu cho bạn. Hãy kiểm tra rồi nhấn Bắt đầu trận để xác nhận.");return;
   }
   placeAll(player);placingShips=true;shipIndex=SHIPS.length;render();$("confirmPlacement").disabled=false;setNotice("Đã tự bố trí đủ 5 tàu (17 ô). Nhấn “Bắt đầu trận” để chơi.");
 }
@@ -265,8 +285,9 @@ function onlineMessage(message){
     onlinePlayer=message.slice(8).trim();
     $("connection").textContent="Đã kết nối · "+(onlinePlayer==="P1"?"Người chơi 1":"Người chơi 2");
     onlineReadySent=false;
-    onlineSend("random");
-    setNotice("Đã ghép trận. Đang bố trí hạm đội…");
+    verticalPlacement=false;
+    $("rotateBtn").textContent="Đổi hướng: ngang";
+    setNotice("Đã ghép trận. Hãy tự xếp tàu trên bàn cờ bên trái.");
   }else if(message.startsWith("INFO ")){
     setNotice(message.slice(5));
   }else if(message.startsWith("ERROR ")){
@@ -279,10 +300,6 @@ function onlineMessage(message){
     finish(winner===onlinePlayer?"Bạn chiến thắng!":"Đối thủ chiến thắng!","Ván đấu đã kết thúc.");
   }else if(message.startsWith("VIEW|")){
     onlineView=parseOnlineView(message);
-    if(onlineView && onlineView.phase==="placing" && onlineView.own.ships.length===5 && !onlineReadySent){
-      onlineReadySent=true;
-      onlineSend("ready");
-    }
     if(onlineView && onlineView.phase==="playing"){
       const myTurn=onlineView.turn===onlinePlayer;
       turn=myTurn?"player":"opponent";
@@ -345,10 +362,24 @@ function drawOnlineBoard(id,board,isEnemy){
     if(shot==="hit"){button.classList.add("hit");button.textContent="×";if(ship&&ship.sunk)button.classList.add("sunk");}
     else if(shot==="miss"){button.classList.add("miss");}
     else if(!isEnemy&&ship){button.classList.add("ship");}
-    button.disabled=!isEnemy||gameOver||!onlineView||onlineView.phase!=="playing"||onlineView.turn!==onlinePlayer||shot!=="";
-    if(isEnemy)button.addEventListener("click",function(){onlineFireAt(r,c);});
+    if(isEnemy){
+      button.disabled=gameOver||!onlineView||onlineView.phase!=="playing"||onlineView.turn!==onlinePlayer||shot!=="";
+      button.addEventListener("click",function(){onlineFireAt(r,c);});
+    }else{
+      const canPlace=onlineView&&onlineView.phase==="placing"&&!onlineReadySent&&onlineView.own.ships.length<SHIPS.length;
+      button.disabled=!canPlace;
+      if(canPlace)button.addEventListener("click",function(){onlinePlaceShip(r,c);});
+    }
     element.appendChild(button);
   }
+}
+function onlinePlaceShip(r,c){
+  if(!onlineView||onlineView.phase!=="placing"||onlineReadySent)return;
+  const placed=onlineView.own.ships.length;
+  if(placed>=SHIPS.length){setNotice("Đã đặt đủ 5 tàu. Nhấn Bắt đầu trận để xác nhận.");return;}
+  const types=["carrier","battleship","cruiser","submarine","destroyer"];
+  const row=String.fromCharCode(65+r), col=String(c+1);
+  onlineSend("place "+types[placed]+" "+row+col+" "+(verticalPlacement?"v":"h"));
 }
 function onlineFireAt(r,c){
   if(!onlineView||onlineView.phase!=="playing"||onlineView.turn!==onlinePlayer)return;
@@ -376,8 +407,13 @@ render=function(){
   $("enemyHits").textContent="Đã bắn: "+onlineView.enemy.shots.flat().filter(function(x){return x!=="";}).length;
   $("fleet").replaceChildren();
   onlineView.own.ships.forEach(function(ship){const tag=document.createElement("span");tag.className="ship-tag"+(ship.sunk?" done":"");tag.textContent=ship.name+" ("+ship.size+")";$("fleet").appendChild(tag);});
-  $("leftHint").textContent=onlineView.phase==="placing"?"Đang xếp tàu tự động.":"Tàu của bạn được quản lý bởi server Haskell.";
-  $("rightHint").textContent=onlineView.phase==="playing"?(onlineView.turn===onlinePlayer?"Đến lượt bạn.":"Đang chờ đối thủ."):"Trận đấu chưa bắt đầu.";
+  const isPlacing=onlineView.phase==="placing";
+  $("placementControls").style.display=isPlacing&&!onlineReadySent?"flex":"none";
+  $("confirmPlacement").disabled=onlineView.own.ships.length!==SHIPS.length||onlineReadySent;
+  $("randomPlacement").disabled=!isPlacing||onlineReadySent;
+  $("rotateBtn").disabled=!isPlacing||onlineReadySent;
+  $("leftHint").textContent=isPlacing?(onlineReadySent?"Đã xác nhận. Đang chờ đối thủ...":"Đặt tàu "+Math.min(onlineView.own.ships.length+1,5)+"/5: chọn ô trên bàn cờ bên trái; đổi hướng nếu cần."):"Tàu của bạn được quản lý bởi server Haskell.";
+  $("rightHint").textContent=onlineView.phase==="playing"?(onlineView.turn===onlinePlayer?"Đến lượt bạn.":"Đang chờ đối thủ."):isPlacing?"Chưa bắt đầu bắn cho đến khi cả hai xác nhận.":"Trận đấu chưa bắt đầu.";
   $("onlineMode").classList.add("active");
 };
 $("onlineMode").addEventListener("click",function(){
@@ -385,7 +421,8 @@ $("onlineMode").addEventListener("click",function(){
     setNotice(onlineView && onlineView.phase==="playing" ? "Bạn đang ở trong trận LAN." : "Đang chờ ghép trận; giữ trang này mở để nhận đối thủ.");
     return;
   }
-  mode="online";gameOver=false;onlineView=null;onlineReadySent=false;
+  mode="online";gameOver=false;onlineView=null;onlineReadySent=false;verticalPlacement=false;
+  $("rotateBtn").textContent="Đổi hướng: ngang";
   $("soloMode").classList.remove("active");$("onlineMode").classList.add("active");
   onlineConnect();render();
 });
