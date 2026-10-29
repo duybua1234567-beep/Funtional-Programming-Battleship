@@ -201,7 +201,7 @@ $("soloMode").addEventListener("click",()=>{
 });
 $("newGame").addEventListener("click",function(){
   if(mode==="online"){
-    if(onlineView && onlineView.phase.startsWith("over:")){
+    if(gameOver || rematchRequestedByOpponent || (onlineView && onlineView.phase.startsWith("over:"))){
       onlineSend("reset");
       setNotice(rematchRequestedByOpponent?"Đã xác nhận ván mới. Đang đồng bộ với đối thủ…":"Đã gửi yêu cầu ván mới. Đang chờ đối thủ xác nhận…");
       $("endModal").classList.remove("show");
@@ -275,7 +275,7 @@ $("placeBtn").addEventListener("click",resetManualPlacement);
 $("resetShips").addEventListener("click",resetManualPlacement);
 $("playAgain").addEventListener("click",()=>{
   if(mode==="online"){
-    if(onlineView && onlineView.phase.startsWith("over:")){
+    if(gameOver || rematchRequestedByOpponent || (onlineView && onlineView.phase.startsWith("over:"))){
       onlineSend("reset");
       $("endModal").classList.remove("show");
       setNotice(rematchRequestedByOpponent?"Đã xác nhận ván mới. Đang đồng bộ với đối thủ…":"Đã gửi yêu cầu ván mới. Đang chờ đối thủ xác nhận…");
