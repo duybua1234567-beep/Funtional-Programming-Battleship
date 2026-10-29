@@ -100,13 +100,19 @@ runMatch sock = do
 
 -- | Luồng ghi: lấy thông điệp từ hàng đợi và gửi cho client.
 writer :: Handle -> TQueue ServerMsg -> IO ()
-writer h q = forever $ do
-  msg <- atomically (readTQueue q)
-  sendNow h msg `catch` ignoreIO
+writer h q = do
+  tid <- myThreadId
+  putStrLn ("[Writer] Bat dau luong: " ++ show tid)
+  forever $ do
+    msg <- atomically (readTQueue q)
+    sendNow h msg `catch` ignoreIO
 
 -- | Luồng đọc của một người chơi.
 reader :: Player -> Handle -> TVar Room -> Queues -> MVar () -> IO ()
-reader p h roomVar queues done = (loop `catch` ignoreIO) `finally` farewell
+reader p h roomVar queues done = do
+  tid <- myThreadId
+  putStrLn ("[Reader " ++ show p ++ "] Bat dau luong: " ++ show tid)
+  (loop `catch` ignoreIO) `finally` farewell
   where
     loop = do
       line <- hGetLine h
