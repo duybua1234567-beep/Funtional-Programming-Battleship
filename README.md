@@ -11,6 +11,9 @@ Mở terminal tại thư mục gốc `battleship`.
 ```bash
 cabal build all
 ```
+```bash
+cabal run battleship -- web +RTS -N -RTS
+```
 
 Sau khi build thành công, chạy server bằng lệnh khởi động Web Server mà dự án đang sử dụng. Server cần được chạy từ thư mục gốc để có thể đọc `web/index.html` và ghi dữ liệu trong `data/`. Hai máy phải ở cùng mạng LAN; máy khách mở địa chỉ IP LAN của máy chạy server cùng cổng đã cấu hình.
 
