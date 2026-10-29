@@ -274,7 +274,7 @@ function onlineConnect(){
   onlineSocket.onopen=function(){onlineConnected=true;$("connection").textContent="Đã kết nối · chờ ghép trận";setNotice("Đã kết nối máy chủ. Đang chờ người chơi thứ hai…");};
   onlineSocket.onmessage=function(event){onlineMessage(String(event.data));};
   onlineSocket.onerror=function(){$("connection").textContent="Lỗi kết nối WebSocket";setNotice("Không thể kết nối máy chủ. Hãy kiểm tra server và địa chỉ IP.");};
-  onlineSocket.onclose=function(){onlineConnected=false;$("connection").textContent="Mất kết nối máy chủ";setNotice("Kết nối đã đóng. Hãy tải lại trang hoặc kết nối lại.");};
+  onlineSocket.onclose=function(){onlineConnected=false;$("connection").textContent="Mất kết nối máy chủ";setNotice("Mất kết nối. Nếu máy chủ vừa khởi động lại, hãy chọn Chơi qua LAN trên cả hai máy để khôi phục ván cũ.");};
 }
 function onlineSend(command){
   if(onlineSocket && onlineSocket.readyState===WebSocket.OPEN) onlineSocket.send(command);
@@ -289,6 +289,7 @@ function onlineMessage(message){
     $("rotateBtn").textContent="Đổi hướng: ngang";
     setNotice("Đã ghép trận. Hãy tự xếp tàu trên bàn cờ bên trái.");
   }else if(message.startsWith("INFO ")){
+    if(message.slice(5).includes("Đã sẵn sàng")){onlineReadySent=true;render();}
     setNotice(message.slice(5));
   }else if(message.startsWith("ERROR ")){
     setNotice(message.slice(6));
