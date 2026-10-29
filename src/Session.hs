@@ -90,7 +90,7 @@ stepRoom p cmd room = case cmd of
                , (p, SInfo "Đã xếp ngẫu nhiên. Gõ ready để xác nhận, hoặc random/reset để làm lại.") ])
 
   Reset
-    | isOver room -> requestRematch
+    | isJust (rGame room) -> requestRematch
     | otherwise -> whilePlacing $ \_ ->
         let room' = setBoardIn p emptyBoard room
         in (room', [(p, SView (viewFor p room'))])
@@ -105,18 +105,20 @@ stepRoom p cmd room = case cmd of
       ready' = Set.insert p (rReady room)
       room1  = room { rReady = ready' }
 
-  Fire c -> case rGame room of
-    Nothing -> (room, [err "Ván đấu chưa bắt đầu. Hãy xếp tàu và gõ ready."])
-    Just g  -> case fire p c g of
-      Left e -> (room, [err (describeFireError e)])
-      Right (res, g') ->
-        let room'  = room { rGame = Just g' }
-            shots  = [(q, SShot p c res) | q <- players]
-            views  = [(q, SView (viewFor q room')) | q <- players]
-            ending = case winner g' of
-              Just w  -> [(q, SGameOver w) | q <- players]
-              Nothing -> []
-        in (room', shots ++ views ++ ending)
+  Fire c
+    | not (Set.null (rRematch room)) -> (room, [err "Đang chờ xác nhận chơi lại. Ván đấu tạm dừng."])
+    | otherwise -> case rGame room of
+        Nothing -> (room, [err "Ván đấu chưa bắt đầu. Hãy xếp tàu và gõ ready."])
+        Just g  -> case fire p c g of
+          Left e -> (room, [err (describeFireError e)])
+          Right (res, g') ->
+            let room'  = room { rGame = Just g' }
+                shots  = [(q, SShot p c res) | q <- players]
+                views  = [(q, SView (viewFor q room')) | q <- players]
+                ending = case winner g' of
+                  Just w  -> [(q, SGameOver w) | q <- players]
+                  Nothing -> []
+            in (room', shots ++ views ++ ending)
   where
     err msg = (p, SError msg)
 
@@ -128,7 +130,7 @@ stepRoom p cmd room = case cmd of
 
     requestRematch
       | p `Set.member` rRematch room =
-          (room, [(p, SInfo "Đã gửi yêu cầu ván mới. Đang chờ đối thủ xác nhận...")])
+          (room, [(p, SInfo "Đã gửi yêu cầu chơi lại. Ván đấu đang tạm dừng; chờ đối thủ xác nhận...")])
       | not (Set.null (rRematch room)) =
           let room' = initialRoom (rSeed room)
               messages = concat
@@ -140,8 +142,8 @@ stepRoom p cmd room = case cmd of
           let room' = room { rRematch = Set.singleton p }
               opponent = other p
           in (room',
-              [ (p, SInfo "Đã gửi yêu cầu ván mới. Đang chờ đối thủ xác nhận...")
-              , (opponent, SInfo "Đối thủ muốn chơi ván mới. Nhấn nút Ván mới để xác nhận.")
+              [ (p, SInfo "Đã gửi yêu cầu chơi lại. Ván đấu đang tạm dừng; chờ đối thủ xác nhận...")
+              , (opponent, SInfo "Đối thủ muốn chơi lại. Nhấn Xác nhận chơi lại để bắt đầu ván mới.")
               ])
 
     startGame r =
@@ -168,7 +170,7 @@ helpLines =
   [ "Các lệnh:"
   , "  place <tàu> <ô> <h|v>   xếp tàu, ví dụ: place carrier a1 h   (h = ngang, v = dọc)"
   , "  random                  xếp ngẫu nhiên cả hạm đội"
-  , "  reset                   xóa tàu khi đang xếp; sau khi kết thúc, yêu cầu/xác nhận ván mới"
+  , "  reset                   xóa tàu khi đang xếp; trong/trước/sau trận yêu cầu/xác nhận ván mới"
   , "  ready                   xác nhận xếp xong"
   , "  fire <ô>                bắn, ví dụ: fire b7 (chỉ gõ b7 cũng được)"
   , "  help / quit"
