@@ -31,6 +31,7 @@ import Types
 data Room = Room
   { rBoards :: Map Player Board   -- ^ bàn cờ (đang xếp) của từng người
   , rReady  :: Set Player         -- ^ ai đã bấm ready
+  , rRematch :: Set Player        -- ^ ai đã yêu cầu/xác nhận ván mới
   , rGame   :: Maybe Game         -- ^ Just khi cả hai đã sẵn sàng
   , rSeed   :: !Seed              -- ^ nguồn ngẫu nhiên cho lệnh 'random'
   } deriving (Show, Read)
@@ -39,7 +40,7 @@ data Room = Room
 type Outgoing = (Player, ServerMsg)
 
 initialRoom :: Seed -> Room
-initialRoom = Room Map.empty Set.empty Nothing
+initialRoom seed = Room Map.empty Set.empty Set.empty Nothing seed
 
 boardIn :: Player -> Room -> Board
 boardIn p = Map.findWithDefault emptyBoard p . rBoards
@@ -88,9 +89,11 @@ stepRoom p cmd room = case cmd of
     in (room', [ (p, SView (viewFor p room'))
                , (p, SInfo "Đã xếp ngẫu nhiên. Gõ ready để xác nhận, hoặc random/reset để làm lại.") ])
 
-  Reset -> whilePlacing $ \_ ->
-    let room' = setBoardIn p emptyBoard room
-    in (room', [(p, SView (viewFor p room'))])
+  Reset
+    | isOver room -> requestRematch
+    | otherwise -> whilePlacing $ \_ ->
+        let room' = setBoardIn p emptyBoard room
+        in (room', [(p, SView (viewFor p room'))])
 
   Ready
     | isJust (rGame room)           -> (room, [err "Ván đấu đã bắt đầu."])
@@ -123,6 +126,24 @@ stepRoom p cmd room = case cmd of
           (room, [err "Bạn không thể xếp tàu lúc này."])
       | otherwise = k (boardIn p room)
 
+    requestRematch
+      | p `Set.member` rRematch room =
+          (room, [(p, SInfo "Đã gửi yêu cầu ván mới. Đang chờ đối thủ xác nhận...")])
+      | not (Set.null (rRematch room)) =
+          let room' = initialRoom (rSeed room)
+              messages = concat
+                [ [ (q, SInfo "Cả hai đã đồng ý. Ván mới bắt đầu; hãy xếp tàu và xác nhận.")
+                  , (q, SView (viewFor q room')) ]
+                | q <- players ]
+          in (room', messages)
+      | otherwise =
+          let room' = room { rRematch = Set.singleton p }
+              opponent = other p
+          in (room',
+              [ (p, SInfo "Đã gửi yêu cầu ván mới. Đang chờ đối thủ xác nhận...")
+              , (opponent, SInfo "Đối thủ muốn chơi ván mới. Nhấn nút Ván mới để xác nhận.")
+              ])
+
     startGame r =
       let g  = newGame (boardIn P1 r) (boardIn P2 r)
           r' = r { rGame = Just g }
@@ -147,7 +168,7 @@ helpLines =
   [ "Các lệnh:"
   , "  place <tàu> <ô> <h|v>   xếp tàu, ví dụ: place carrier a1 h   (h = ngang, v = dọc)"
   , "  random                  xếp ngẫu nhiên cả hạm đội"
-  , "  reset                   xóa các tàu đã xếp"
+  , "  reset                   xóa tàu khi đang xếp; sau khi kết thúc, yêu cầu/xác nhận ván mới"
   , "  ready                   xác nhận xếp xong"
   , "  fire <ô>                bắn, ví dụ: fire b7 (chỉ gõ b7 cũng được)"
   , "  help / quit"
