@@ -81,3 +81,11 @@ Máy chủ lưu ảnh chụp trạng thái trận đang chơi vào `data/active-
 Nếu router cấp IP động, hãy tạo DHCP reservation cho hai máy để giữ IP ổn định. IP là dấu hiệu nhận diện trong mạng LAN, không phải cơ chế xác thực bảo mật mạnh. Bản khôi phục lưu trạng thái gần nhất đã ghi ra đĩa; nếu server mất điện đúng lúc đang ghi file, thao tác cuối cùng có thể chưa được lưu.
 
 Kiểm thử: bắt đầu trận LAN, đặt tàu và bắn ít nhất một lượt; dừng tiến trình server bằng `Ctrl+C` hoặc đóng tiến trình; chạy lại `cabal run battleship -- web`; sau đó mở lại chế độ LAN trên cả hai máy. Kiểm tra terminal thông báo hai IP cần quay lại và xác nhận bàn cờ/lượt bắn được khôi phục.
+# Chơi ván mới qua LAN
+
+Đã tận dụng nút **Ván mới** có sẵn trong `web/index.html`. Sau khi ván LAN kết thúc, một người nhấn nút để gửi yêu cầu; người còn lại nhận thông báo và nút đổi thành **Xác nhận ván mới**. Khi người thứ hai xác nhận, server đặt lại phòng trên cùng WebSocket, hai người quay lại bước xếp tàu.
+
+Lệnh `reset` vẫn xóa tàu khi phòng đang ở bước xếp tàu; chỉ khi ván đã kết thúc, `reset` mới được hiểu là yêu cầu/xác nhận chơi lại. Nhật ký `data/match-history.log` tiếp tục được ghi nối tiếp. `data/active-match.txt` giữ trạng thái chờ chơi lại để có thể nạp lại khi server khởi động.
+
+Build kiểm tra bằng `cabal build all` từ thư mục gốc.
+
