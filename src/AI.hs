@@ -1,17 +1,4 @@
--- | AI.hs
---
--- Đối thủ máy: chiến thuật "săn - truy" (hunt / target) kinh điển.
---
---   1. Nếu đã có ô TRÚNG mà tàu chưa chìm:
---        a. ưu tiên ô nối dài đường thẳng của hai ô trúng liền nhau
---           (tàu nằm thẳng nên đây là nước đi chắc ăn nhất);
---        b. nếu chưa có đường thẳng thì bắn ô kề một ô trúng.
---   2. Nếu không có gì để truy thì "săn": bắn ô theo mẫu bàn cờ vua (r + c
---      chẵn). Tàu dài tối thiểu 2 ô nên mẫu này không bỏ sót tàu nào mà chỉ
---      cần bắn khoảng một nửa số ô.
---
--- AI chỉ nhìn thấy 'PublicBoard' (đúng thứ một người chơi thật thấy) nên nó
--- không thể gian lận, vì kiểu dữ liệu không cho nó xem vị trí tàu.
+
 module AI (chooseShot, candidates) where
 
 import qualified Data.Map.Strict as Map
