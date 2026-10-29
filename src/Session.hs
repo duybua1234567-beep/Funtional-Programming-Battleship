@@ -33,7 +33,7 @@ data Room = Room
   , rReady  :: Set Player         -- ^ ai đã bấm ready
   , rGame   :: Maybe Game         -- ^ Just khi cả hai đã sẵn sàng
   , rSeed   :: !Seed              -- ^ nguồn ngẫu nhiên cho lệnh 'random'
-  } deriving (Show)
+  } deriving (Show, Read)
 
 -- | (gửi cho ai, nội dung)
 type Outgoing = (Player, ServerMsg)
