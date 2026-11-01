@@ -12,7 +12,7 @@ https://www.haskell.org/ghcup/install/
 ```bash
 https://www.haskell.org/get-started/
 ```
-Hướng dẫn tải GHCi
+Hướng dẫn tải GHCi (KHUYẾN KHÍCH)
 ```bash
 https://docs.google.com/document/d/1xV6mKx3GnP7EZS5RjfJNNfF2pTRpxAA6/edit?pli=1
 ```
