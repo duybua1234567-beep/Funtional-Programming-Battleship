@@ -1,1 +1,0 @@
-SavedMatch {savedRoom = Room {rBoards = fromList [], rReady = fromList [], rRematch = fromList [], rGame = Nothing, rSeed = 5279921964624774764}, savedP1IP = "(10,108,77,189)", savedP2IP = "(10,108,77,70)"}
